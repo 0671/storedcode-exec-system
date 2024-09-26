@@ -24,4 +24,4 @@ celery -A myproject worker -l info -P threads
 ```
 
 ## Access
-http://127.0.0.1/code/
+http://127.0.0.1:8000/code/
