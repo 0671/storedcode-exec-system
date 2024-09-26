@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Execute Python Code</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+</head>
+
+<body>
+    <h1>Execute Python Code</h1>
+    
+    <form class="codeForm" method="post" action="{% url 'save_code_to_db' %}">
+        {% csrf_token %}
+        <textarea id="codeEditor" ></textarea><br>
+        <input type="submit" value="Save Code">
+    </form>
+    <div id="codeFormId"></div>
+
+    <form class="execForm" method="post" action="{% url 'execute_code_web' %}">
+        {% csrf_token %}
+        <input name="id" type="number" cols="50" /><br>
+        <input type="submit" value="Execute">
+    </form>
+    <div id="execFormTaskId"></div>
+
+    <form class="resultForm" method="post" action="{% url 'get_last_exec_result_web' %}">
+        {% csrf_token %}
+        <input name="id" type="number" cols="100" /><br>
+        <input type="submit" value="GetResult">
+    </form>
+    <div id="resultStatus"></div><br>
+    <div id="resultResult"></div>
+
+    <form class="checkForm" method="post" action="{% url 'check_code_web' %}">
+        {% csrf_token %}
+        <input name="id" type="number" cols="50" /><br>
+        <input type="submit" value="Check">
+    </form>
+    <div id="checkFormResultID"></div>
+    <textarea id="checkFormResultCode"></textarea>
+
+    <h2>Stored Codes:</h2>
+    <table id="storedCodesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Code</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</body>
+
+<script>
+
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    $.ajaxSetup({headers: {'X-CSRFToken': csrftoken},});
+
+    var editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+        mode: 'python',
+        lineNumbers: true,
+        theme: 'monokai',
+    });
+
+    var checker = CodeMirror.fromTextArea(document.getElementById('checkFormResultCode'), {
+        mode: 'python',
+        lineNumbers: true,
+        readOnly: true,
+        theme: 'monokai',
+    });
+
+
+    $.ajax({
+        type: "GET",
+        url: "{% url 'get_all_stored_codes' %}",
+        success: function (data) {
+            let storedCodesTableBody = $('#storedCodesTable tbody');
+            
+            data.forEach(function (storedCode) {
+                tempTextarea_id = `code-show-${storedCode.id}`
+                storedCodesTableBody.append(
+                        `<tr><td>${storedCode.id}</td><td><textarea id="code-show-${storedCode.id}">${storedCode.code}</textarea></td></tr>`
+                );
+                console.log(storedCode.code)
+                let storedCodeEditor = CodeMirror.fromTextArea(document.getElementById(tempTextarea_id), {
+                        mode: 'python',
+                        readOnly: true,
+                        lineNumbers: true,
+                        theme: 'monokai'
+                    });
+            });
+        },
+        error: function (error) {
+            console.log('Error fetching stored codes:', error);
+        }
+    });
+
+
+    $('.codeForm').submit(function (event) {
+        event.preventDefault();
+        var formData = { code: editor.getValue() };
+        $.ajax({
+            type: "POST",
+            url: $(this).attr('action'),
+            data: formData,
+            success: function (data) {
+                $('#codeFormId').html(data.result);
+            },
+            error: function (error) {
+                $('#codeFormId').html('Error: ' + error.responseText);
+            }
+        });
+    });
+
+    $('.execForm').submit(function (event) {
+        event.preventDefault();
+        var formData = $(this).serialize();
+        $.ajax({
+            type: "POST",
+            url: $(this).attr('action'),
+            data: formData,
+            success: function (data) {
+                $('#execFormTaskId').html(data.result.task_id);
+            },
+            error: function (error) {
+                $('#execFormResult').html('Error: ' + error.responseText);
+            }
+        });
+    });
+
+    $('.resultForm').submit(function (event) {
+        event.preventDefault();
+        var formData = $(this).serialize();
+        $.ajax({
+            type: "POST",
+            url: $(this).attr('action'),
+            data: formData,
+            success: function (data) {
+                $('#resultStatus').html(data.status);
+                $('#resultResult').html(JSON.stringify(data.result));
+                console.log(data.result);
+            },
+            error: function (error) {
+                $('#resultReuslt').html('Error: ' + error.responseText);
+            }
+        });
+    });
+
+
+    $('.checkForm').submit(function (event) {
+        event.preventDefault();
+        var formData = $(this).serialize();
+        $.ajax({
+            type: "POST",
+            url: $(this).attr('action'),
+            data: formData,
+            success: function (data) {
+                if (data.status === 'success' ) {
+                    $('#checkFormResultID').html(data.result.ID);
+                    checker.setValue(data.result.Code);                  
+                }
+                else{
+                    $('#checkFormResultID').html(data.status);
+                    checker.setValue(data.result);
+                }
+            },
+            error: function (error) {
+                $('#checkFormResultID').html('');
+                checker.setValue('Error: ' + error.responseText);
+
+            }
+        });
+    });
+
+</script>
+
+</html>
