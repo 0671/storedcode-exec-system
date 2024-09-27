@@ -26,7 +26,7 @@
         <input name="id" type="number" cols="50" /><br>
         <input type="submit" value="Execute">
     </form>
-    <div id="execFormTaskId"></div>
+    <div id="execFormTask"></div>
 
     <form class="resultForm" method="post" action="{% url 'get_last_exec_result_web' %}">
         {% csrf_token %}
@@ -126,7 +126,7 @@
             url: $(this).attr('action'),
             data: formData,
             success: function (data) {
-                $('#execFormTaskId').html(data.result.task_id);
+                $('#execFormTask').html(JSON.stringify(data.result));
             },
             error: function (error) {
                 $('#execFormResult').html('Error: ' + error.responseText);

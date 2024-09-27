@@ -9,6 +9,7 @@ from celery.result import AsyncResult
 def get_exec_result(task_id):
     try:
         result = AsyncResult(task_id)
+        print(task_id)
         if result.ready():
             return {
                 'status':'success',
@@ -94,6 +95,11 @@ def execute_code_web(request):
         if code_id:
             try:
                 store_code = StoreCode.objects.get(id=code_id)
+                if store_code.last_task_id != '' and get_exec_result(store_code.last_task_id)['status'] == 'running':
+                    return JsonResponse({
+                        'status': 'error', 
+                        'result': 'Previous task is running yet.'
+                    }) 
                 result = execute_code.delay(store_code.code)
                 store_code.last_task_id = result.task_id
                 store_code.save()
