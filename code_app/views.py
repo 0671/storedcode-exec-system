@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from .models import StoreCode
 from celery import shared_task
 from celery.result import AsyncResult
+import types
 
 def get_exec_result(task_id):
     try:
@@ -27,16 +28,15 @@ def get_exec_result(task_id):
         }
 
 @shared_task
-def execute_code(store_code):
+def execute_code(code):
         try:
-            spec = importlib.util.spec_from_loader('temp_module',None)
-            temp_module = importlib.util.module_from_spec(spec)
-            sys.modules['temp_module']=temp_module
-            exec(store_code, temp_module.__dict__)
-            code_exec_result = temp_module.result
+            module = types.ModuleType('temp_module')
+            exec(code, module.__dict__)
+            class_instance = module.MyClass()
+            result = class_instance.run()
             return {
                 'status': 'success', 
-                'result': code_exec_result
+                'result': result
             }
         except StoreCode.DoesNotExist:
             return {
